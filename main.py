@@ -2,7 +2,7 @@ import os
 import requests
 import firebase_admin
 from firebase_admin import credentials, firestore
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 import json
@@ -26,29 +26,10 @@ else:
 
 # Initialize Flask app
 app = Flask(__name__)
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://blood-donation-oe1d.onrender.com")
+
+# Allow CORS for frontend
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://blood-dontaion-frontend.onrender.com")
 CORS(app, resources={r"/*": {"origins": FRONTEND_URL}})
-
-### 🔹 ROUTES (Frontend Pages) ###
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-@app.route("/dashboard")
-def dashboard():
-    return render_template("dashboard.html")
-
-@app.route("/signup")
-def signup_page():
-    return render_template("signup.html")
-
-@app.route("/add_donor")
-def add():
-    return render_template("add_donor.html")
-
-@app.route("/search_blood")
-def search():
-    return render_template("search_blood.html")
 
 ### 🔹 SIGNUP (User Registration) ###
 @app.route("/signup", methods=["POST"])
@@ -69,7 +50,7 @@ def signup():
         error_message = response.json().get("error", {}).get("message", "Unknown error")
         return jsonify({"success": False, "message": error_message}), 400
 
-### 🔹 LOGIN (User Authentication) ###
+### 🔹 LOGIN ###
 @app.route("/login", methods=["POST"])
 def login():
     data = request.json
@@ -109,21 +90,18 @@ def add_donor():
 @app.route("/search_blood", methods=["GET"])
 def search_blood():
     blood_type = request.args.get("blood_type", "").strip().upper()
-    print(f"🔍 Searching for blood type: '{blood_type}'")  # Debugging log
 
     if not blood_type:
         return jsonify({"success": False, "message": "Missing blood type"}), 400
 
-    # Firestore query using .where() for exact match
     donors_ref = db.collection("donors").where("blood_type", "==", blood_type).stream()
     donors_list = [doc.to_dict() for doc in donors_ref]
 
     if not donors_list:
-        print("❌ No donors found")  # Debugging log
         return jsonify({"success": False, "message": "No donors found"}), 404
 
     return jsonify({"success": True, "donors": donors_list}), 200
 
 ### 🔹 RUN FLASK APP ###
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=80, debug=True)
+    app.run(host="0.0.0.0", port=10000, debug=True)

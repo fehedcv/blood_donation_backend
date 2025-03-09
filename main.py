@@ -27,9 +27,8 @@ else:
 # Initialize Flask app
 app = Flask(__name__)
 
-# Allow CORS for frontend
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://blood-dontaion-frontend.onrender.com")
-CORS(app, resources={r"/*": {"origins": FRONTEND_URL}})
+# 🔹 FIXED CORS SETTINGS 🔹
+CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins for debugging
 
 ### 🔹 SIGNUP (User Registration) ###
 @app.route("/signup", methods=["POST"])

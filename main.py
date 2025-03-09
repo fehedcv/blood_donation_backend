@@ -2,9 +2,11 @@ import os
 import requests
 import firebase_admin
 from firebase_admin import credentials, firestore
-from flask import Flask, request, jsonify,render_template
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from dotenv import load_dotenv
+import json
+import base64
 
 # Load environment variables
 load_dotenv()
@@ -12,18 +14,43 @@ load_dotenv()
 # Secure Firebase API Key from .env
 API_KEY = os.getenv("FIREBASE_API_KEY")
 
-# Initialize Firebase Admin SDK
-cred = credentials.Certificate("credentials.json")
-firebase_admin.initialize_app(cred)
-db = firestore.client()
+# Decode `credentials.json` from Base64
+cred_json = os.getenv("FIREBASE_CREDENTIALS")
+if cred_json:
+    cred_dict = json.loads(base64.b64decode(cred_json).decode())  # Decode & parse JSON
+    cred = credentials.Certificate(cred_dict)
+    firebase_admin.initialize_app(cred)
+    db = firestore.client()
+else:
+    raise ValueError("🔥 FIREBASE_CREDENTIALS environment variable is missing!")
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend communication
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://blood-donation-oe1d.onrender.com")
+CORS(app, resources={r"/*": {"origins": FRONTEND_URL}})
 
+### 🔹 ROUTES (Frontend Pages) ###
+@app.route("/")
+def home():
+    return render_template("index.html")
 
-### 🔹 USER AUTHENTICATION (Signup & Login) ###
+@app.route("/dashboard")
+def dashboard():
+    return render_template("dashboard.html")
 
+@app.route("/signup")
+def signup_page():
+    return render_template("signup.html")
+
+@app.route("/add_donor")
+def add():
+    return render_template("add_donor.html")
+
+@app.route("/search_blood")
+def search():
+    return render_template("search_blood.html")
+
+### 🔹 SIGNUP (User Registration) ###
 @app.route("/signup", methods=["POST"])
 def signup():
     data = request.json
@@ -42,7 +69,7 @@ def signup():
         error_message = response.json().get("error", {}).get("message", "Unknown error")
         return jsonify({"success": False, "message": error_message}), 400
 
-
+### 🔹 LOGIN (User Authentication) ###
 @app.route("/login", methods=["POST"])
 def login():
     data = request.json
@@ -61,7 +88,6 @@ def login():
         error_message = response.json().get("error", {}).get("message", "Unknown error")
         return jsonify({"success": False, "message": error_message}), 400
 
-
 ### 🔹 ADD DONOR TO FIRESTORE ###
 @app.route("/add_donor", methods=["POST"])
 def add_donor():
@@ -78,7 +104,6 @@ def add_donor():
     db.collection("donors").add(donor_data)
 
     return jsonify({"success": True, "message": "Donor added successfully!"}), 200
-
 
 ### 🔹 SEARCH DONORS BY BLOOD TYPE ###
 @app.route("/search_blood", methods=["GET"])
@@ -99,10 +124,6 @@ def search_blood():
 
     return jsonify({"success": True, "donors": donors_list}), 200
 
-
-
-
-
-
+### 🔹 RUN FLASK APP ###
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=80, debug=True)
